@@ -6,35 +6,55 @@ from botocore.exceptions import ClientError
 from fastapi import HTTPException, status
 
 from app.config import settings
+import os
 
 
 class MinIOStorageService:
-    """MinIO storage operations (S3-compatible)"""
+    """MinIO/S3 storage service with lazy initialization"""
     
     def __init__(self):
-        """Initialize MinIO client"""
-        self.minio_client = boto3.client(
-            's3',
-            endpoint_url=settings.MINIO_ENDPOINT,
-            aws_access_key_id=settings.MINIO_ACCESS_KEY,
-            aws_secret_access_key=settings.MINIO_SECRET_KEY,
-            region_name=settings.MINIO_REGION,
-            config=Config(signature_version='s3v4'),
-            use_ssl=settings.MINIO_USE_SSL
-        )
-        self._ensure_bucket_exists()
+        self._client = None
+        self._initialized = False
+        self._skip_init = os.getenv('CI') == 'true' or os.getenv('TESTING') == 'true'
+        
+        if self._skip_init:
+            print("⚠️  Running in test/CI mode - MinIO disabled")
+    
+    @property
+    def minio_client(self):
+        """Lazy initialization of MinIO client"""
+        if self._skip_init:
+            raise RuntimeError("MinIO is disabled in test/CI environment")
+        
+        if self._client is None:
+            self._client = boto3.client(
+                's3',
+                endpoint_url=settings.MINIO_ENDPOINT,
+                aws_access_key_id=settings.MINIO_ACCESS_KEY,
+                aws_secret_access_key=settings.MINIO_SECRET_KEY,
+                config=Config(signature_version='s3v4'),
+                region_name=settings.MINIO_REGION
+            )
+            
+            if not self._initialized:
+                try:
+                    self._ensure_bucket_exists()
+                    self._initialized = True
+                except Exception as e:
+                    print(f"⚠️  MinIO initialization warning: {e}")
+        
+        return self._client
     
     def _ensure_bucket_exists(self):
-        """Create MinIO bucket if it doesn't exist"""
+        """Create bucket if it doesn't exist"""
         try:
             self.minio_client.head_bucket(Bucket=settings.MINIO_BUCKET)
-            print(f"MinIO bucket exists: {settings.MINIO_BUCKET}")
-        except ClientError:
-            try:
+            print(f"✅ MinIO bucket exists: {settings.MINIO_BUCKET}")
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+            if error_code == '404':
                 self.minio_client.create_bucket(Bucket=settings.MINIO_BUCKET)
-                print(f"Created MinIO bucket: {settings.MINIO_BUCKET}")
-            except ClientError as e:
-                print(f"MinIO bucket creation failed: {e}")
+                print(f"✅ MinIO bucket created: {settings.MINIO_BUCKET}")
     
     def generate_presigned_upload_url(
         self,
