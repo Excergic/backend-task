@@ -1,0 +1,63 @@
+# render.yaml
+services:
+  # API Service
+  - type: web
+    name: stories-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/v1/health/live
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stories-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: stories-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: "false"
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+
+  # Worker Service
+  - type: worker
+    name: stories-worker
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: "pip install uv && uv pip install --system -r pyproject.toml"
+    startCommand: "python -m app.worker.expiration_worker"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stories-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  # PostgreSQL Database
+  - name: stories-db
+    databaseName: stories_db
+    user: postgres
+    region: oregon
+    plan: free
+
+  # Redis
+  - name: stories-redis
+    region: oregon
+    plan: free
+    maxmemoryPolicy: allkeys-lru

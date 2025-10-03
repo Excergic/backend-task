@@ -1,15 +1,4 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-.env
-# .gitignore
+# .dockerignore
 __pycache__/
 *.py[cod]
 *$py.class
@@ -32,11 +21,21 @@ htmlcov/
 *.swp
 *.swo
 
-# Local env files
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+docs/
+
+# Tests
+tests/
+
+# Local dev files
 .env.local
 *.log
 
 # OS
 .DS_Store
 Thumbs.db
-
