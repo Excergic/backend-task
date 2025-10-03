@@ -40,6 +40,20 @@ class Settings(BaseSettings):
     ]
     MAX_UPLOAD_SIZE_MB: int = 50  # 50MB max
     PRESIGNED_URL_EXPIRATION: int = 3600
+
+    # Rate Limiting (requests per minute)
+    REDIS_URL: str = "redis://localhost:6379/0"
+    RATE_LIMIT_STORIES: int = 20  # POST /stories
+    RATE_LIMIT_REACTIONS: int = 60  # POST /reactions
+    RATE_LIMIT_VIEWS: int = 100  # POST /view
+    RATE_LIMIT_FOLLOW: int = 30  # POST /follow
+
+    # CORS
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080"
+    ]
     
     model_config = SettingsConfigDict(
         env_file=".env",

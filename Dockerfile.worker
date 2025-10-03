@@ -1,0 +1,19 @@
+# Dockerfile.worker
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy dependency files
+COPY pyproject.toml .
+
+# Install dependencies
+RUN uv pip install --system --no-cache -r pyproject.toml
+
+# Copy application code
+COPY app/ app/
+
+# Run worker
+CMD ["python", "-m", "app.worker.expiration_worker"]

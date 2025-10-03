@@ -4,6 +4,8 @@ from fastapi import HTTPException, status
 from app.core.security import hash_password, verify_password, create_access_token
 from app.repositories.user_repo import UserRepository
 
+from app.core.logging_config import structured_logger
+from app.core.metrics import auth_attempts_total
 
 class AuthService:
     """Authentication business logic"""
@@ -32,6 +34,10 @@ class AuthService:
         
         # Generate JWT token
         access_token = create_access_token(str(user["id"]))
+
+        # Log success
+        structured_logger.auth_success(user["id"], email)
+        auth_attempts_total.labels(result="success").inc()
         
         return {
             "user": user,
@@ -64,6 +70,10 @@ class AuthService:
         
         # Generate JWT token
         access_token = create_access_token(str(user["id"]))
+
+         # Log success
+        structured_logger.auth_success(user["id"], email)
+        auth_attempts_total.labels(result="success").inc()
         
         # Remove password_hash from response
         user.pop("password_hash")
